@@ -49,6 +49,7 @@ def run(engine, args, queue):
             queue.put((engine, 'FAIL'))
         else:
             queue.put((engine, result))
+            logger.info(f'A solution was found:\n{result}')
     except Exception as e:
         logger.error(f'Exception encountered during solving:')
         logger.exception(e)
@@ -97,7 +98,7 @@ def main(args):
     while waiting > 0:
         (engine, result) = queue.get()
         if result != 'FAIL':
-            logger.info(f'First solution received from {engine}')
+            logger.info(f'Received a solution from engine "{engine}".')
             print(result)
             break
         else:
@@ -105,7 +106,8 @@ def main(args):
             waiting -= 1
 
     if waiting < 1:
-        logger.error(f'No engines were able to provide a solution!')
+        logger.critical(f'No engines were able to find a solution!')
+        exit(1)
 
     logger.debug(f'Terminating remaining engines ...')
     for worker in workers:
@@ -127,7 +129,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(
         format='%(asctime)s [%(levelname)8s] %(name)12s - %(message)s',
-        level=logging.INFO)
+        level=logging.CRITICAL)
     logger = logging.getLogger('boot')
 
     logger.info(f'Booting portfolio solver at "{SELF_PATH}".')
@@ -157,7 +159,7 @@ if __name__ == '__main__':
                         type=str.lower, default='smt', choices=['smt','sygus'],
                         help='The input file format (default: %(default)s)')
     parser.add_argument('-l', '--log-level',
-                        type=str.upper, default='INFO',
+                        type=str.upper, default='CRITICAL',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         help='Set the logging level (default: %(default)s)')
     parser.add_argument('input_file',
