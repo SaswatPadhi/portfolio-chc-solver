@@ -1,0 +1,12 @@
+[submodule "aeval"]
+	path = aeval
+	url = https://github.com/grigoryfedyukovich/aeval
+[submodule "LIG-CHC"]
+	path = LIG-CHC
+	url = https://github.com/SaswatPadhi/LIG-CHC
+[submodule "z3"]
+	path = z3
+	url = https://github.com/Z3Prover/z3
+[submodule "tools"]
+	path = tools
+	url = https://github.com/SyGuS-Org/tools.git
