@@ -2,6 +2,7 @@
 
 import logging
 
+from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count, Process, Queue
 from pathlib import Path
@@ -13,27 +14,27 @@ SELF_PATH = Path(__file__).resolve().parent
 
 
 def run(engine, args, queue):
-    logger = logging.getLogger(f'w:{engine}')
-    logger.setLevel(logging.getLevelName(args.log_level))
+    logger = args.logging.getLogger(f'e:{engine}')
+    logger.setLevel(args.logging.getLevelName(args.log_level))
 
-    engine_path = SELF_PATH.joinpath('engines', engine)
+    engine_path = args.engines_path.joinpath(engine)
     if not engine_path.is_dir():
-        logger.critical(f'Failed to locate "{engine}" engine at "{engines_path}"!')
+        logger.critical(f'Failed to locate "{engine}" engine at "{engine_path}"!')
         queue.put((engine, 'FAIL'))
         return
 
     engine_path = engine_path.joinpath('runner.py')
     if not engine_path.is_file():
-        logger.error(f'Failed to locate "{engine}" runner at "{engines_path}"!')
+        logger.error(f'Failed to locate "{engine}" runner at "{engine_path}"!')
         queue.put((engine, 'FAIL'))
         return
 
     engine_runner = import_module(f'engines.{engine}.runner')
-    engine_runner.setup(args, logging)
+    engine_runner.setup(args)
 
     if hasattr(engine_runner, 'preprocess'):
         try:
-            logger.debug(f'Preprocessing "{args.input_file}" for {engine} ...')
+            logger.debug(f'Preprocessing "{args.input_file}" for "{engine}" engine ...')
             args = engine_runner.preprocess(args)
         except Exception as e:
             logger.error(f'Exception encountered during preprocessing:')
@@ -54,38 +55,41 @@ def run(engine, args, queue):
         queue.put((engine, 'FAIL'))
 
 
-def main(args, engines):
-    logger = logging.getLogger('solver')
-    logger.setLevel(logging.getLevelName(args.log_level))
+def main(args):
+    logger = args.logging.getLogger('portfolio')
+    logger.setLevel(args.logging.getLevelName(args.log_level))
 
-    logger.debug(f'Started portfolio solver with mode = "{args.mode}", log level = "{args.log_level}".')
+    logger.debug(f'Started portfolio solver with format = "{args.format}", log level = "{args.log_level}".')
 
-    _, tfile_path = make_tempfile(suffix=f'.{args.mode}')
+    _, tfile_path = make_tempfile(suffix=f'.{args.format}')
     logger.info(f'Cloning input to file: {tfile_path}.')
     with open(tfile_path, 'w') as tfile_handle:
         tfile_handle.writelines(args.input_file.readlines())
     args.input_file = Path(tfile_path).resolve()
     
+    engines = args.engines
     if args.disable_engine:
         for engine in args.disable_engine:
-            if engine in engines:
-                logger.info(f'Disabled CHC solver engine: {engine}.')
+            if engine in args.engines:
+                logger.info(f'Disabled "{engine}" engine.')
             else:
-                logger.warning(f'Cannot disable unknown CHC solver engine: {engine}.')
+                logger.warning(f'Cannot disable unknown engine: "{engine}".')
         engines = [engine for engine in engines if engine not in args.disable_engine]
-    logger.info(f'Enabled CHC solver engines: {engines}.')
+
+    logger.info(f'Enabled engines: {engines}.')
     if cpu_count() <= len(engines):
-        logger.warning(f'Starting {len(engines)} worker(s) on {cpu_count()} CPU(s).')
+        logger.warning(f'Starting {len(engines)} engine(s); have {cpu_count()} CPU(s).')
     elif len(engines) > 0:
-        logger.info(f'Starting {len(engines)} worker(s) on {cpu_count()} CPU(s).')
+        logger.info(f'Starting {len(engines)} engine(s); {cpu_count()} CPU(s).')
     else:
-        logger.critical(f'No CHC solver engines are enabled!')
+        logger.critical(f'No engines are enabled! Quitting portfolio solver.')
         exit(1)
 
     queue = Queue()
     workers = []
     for engine in engines:
-        worker = Process(target=run, args=(engine, args, queue))
+        args_copy = copy(args)
+        worker = Process(target=run, args=(engine, args_copy, queue))
         workers.append(worker)
         worker.start()
 
@@ -94,20 +98,20 @@ def main(args, engines):
         (engine, result) = queue.get()
         if result != 'FAIL':
             logger.info(f'First solution received from {engine}')
-            print(result, end='')
+            print(result)
             break
         else:
-            logger.warning(f'CHC solver engine {engine} failed.')
+            logger.warning(f'Engine "{engine}" failed with an exception!')
             waiting -= 1
 
     if waiting < 1:
-        logger.error(f'No CHC solver engines were able to provide a solution!')
+        logger.error(f'No engines were able to provide a solution!')
 
-    logger.debug(f'Terminating remaining CHC solver engines ...')
+    logger.debug(f'Terminating remaining engines ...')
     for worker in workers:
         worker.terminate()
 
-    logger.debug(f'Shutting down portfolio solver.')
+    logger.debug(f'Quitting portfolio solver.')
     exit(0)
 
 
@@ -130,29 +134,44 @@ if __name__ == '__main__':
     
     engines_path = SELF_PATH.joinpath('engines')
     if not engines_path.is_dir():
-        logger.critical(f'No CHC solver engines found at "{engines_path}"!')
+        logger.critical(f'Engines directory "{engines_path}" does not exist!')
         exit(1)
 
-    engines = [engine.name for engine in engines_path.glob('*')
-               if engine.is_dir() and engine.name != '__pycache__' ]
-    logger.info(f'Detected CHC solver engines: {engines}.')
+    engines = [e.name for e in engines_path.glob('*')
+               if e.is_dir() and e.name != '__pycache__' ]
+    logger.info(f'Detected engines: {engines}.')
+    
+    translators_path = SELF_PATH.joinpath('translators')
+    if not translators_path.is_dir():
+        logger.warning(f'Translators directory "{translators_path}" does not exist!')
+
+    translators = [t.name[:-3] for t in translators_path.glob('*')
+                   if t.is_file() and t.name != '__init__.py' and t.name.endswith('.py') ]
+    logger.info(f'Detected translators: {translators}.')
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d', '--disable-engine',
                         action='append', choices=engines,
                         help='Disable a CHC solver engine')
+    parser.add_argument('-f', '--format',
+                        type=str.lower, default='smt', choices=['smt','sygus'],
+                        help='The input file format (default: %(default)s)')
     parser.add_argument('-l', '--log-level',
                         type=str.upper, default='INFO',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         help='Set the logging level (default: %(default)s)')
-    parser.add_argument('-m', '--mode',
-                        type=str.lower, default='smt', choices=['smt','sygus'],
-                        help='Select the input format')
-    parser.add_argument('-t', '--translators-dir',
-                        type=dir_path, default=f'{SELF_PATH.joinpath("translators")}',
-                        help='Path to the directory containing SMT <-> SyGuS translators.')
     parser.add_argument('input_file',
                         type=FileType('r'),
                         help='Path to an input file (or <stdin> if "-")')
 
-    main(parser.parse_args(), engines)
+    args = parser.parse_args()
+
+    args.logging = logging
+
+    args.engines_path = engines_path
+    args.engines = engines
+
+    args.translators_path = translators_path
+    args.translators = translators
+
+    main(args)

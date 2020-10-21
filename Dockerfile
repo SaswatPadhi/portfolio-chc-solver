@@ -48,7 +48,7 @@ RUN apt-get update \
             --home /home/user \
             --shell /bin/bash \
             --gecos '' user \
- && mkdir -p /home/user/solver \
+ && mkdir -p /home/user/solver/translators \
  && chown -R user:user /home/user
 
 
@@ -91,8 +91,12 @@ RUN rm -rf engines/__pycache_ engines/*/__pycache_ \
 
 
 COPY --chown=user:user \
-     tools/work-in-progress/chc-comp \
-     /home/user/solver/translators
+     tools/work-in-progress/chc-comp/to-sygus.py \
+     /home/user/solver/translators/smt-to-sygus.py
+
+COPY --chown=user:user \
+     tools/work-in-progress/chc-comp/from-sygus.py \
+     /home/user/solver/translators/sygus-to-smt.py
 
 COPY --chown=user:user \
      solver.py \
