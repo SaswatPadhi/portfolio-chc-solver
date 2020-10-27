@@ -1,12 +1,17 @@
-[submodule "aeval"]
-	path = aeval
+[submodule "freqhorn"]
+	path = freqhorn
 	url = https://github.com/grigoryfedyukovich/aeval
-[submodule "LIG-CHC"]
-	path = LIG-CHC
+	branch = rnd
+[submodule "freqn"]
+	path = freqn
+	url = https://github.com/grigoryfedyukovich/aeval
+	branch = modver
+[submodule "lig-chc"]
+	path = lig-chc
 	url = https://github.com/SaswatPadhi/LIG-CHC
-[submodule "z3"]
-	path = z3
-	url = https://github.com/Z3Prover/z3
-[submodule "tools"]
-	path = tools
+[submodule "SyGuS-Org_tools"]
+	path = SyGuS-Org_tools
 	url = https://github.com/SyGuS-Org/tools.git
+[submodule "z3-spacer"]
+	path = z3-spacer
+	url = https://github.com/Z3Prover/z3

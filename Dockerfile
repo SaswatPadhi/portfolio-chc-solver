@@ -1,12 +1,15 @@
 FROM portfolio:builder AS builder
 
 
-COPY --chown=user:user aeval   /home/user/freqhorn
-COPY --chown=user:user LIG-CHC /home/user/lig-chc
-COPY --chown=user:user z3      /home/user/z3
+COPY --chown=user:user freqhorn  /home/user/freqhorn
+COPY --chown=user:user freqn     /home/user/freqn
+COPY --chown=user:user lig-chc   /home/user/lig-chc
+COPY --chown=user:user z3-spacer /home/user/z3-spacer
+COPY --chown=user:user patches   /home/user/patches
 
 
 ARG MAKEFLAGS="-j8"
+
 RUN cd freqhorn \
  && mkdir build \
  && cd build \
@@ -17,7 +20,22 @@ RUN cd freqhorn \
  && make \
  && make
 
-RUN cd z3 \
+RUN cd freqn \
+ && patch -p0 < ../patches/freqn.patch \
+ && mkdir build \
+ && cd build \
+ && cp -r ../../freqhorn/build/run . \
+ && export PYTHON=python3 \
+ && export CC=gcc-4.9 \
+ && export CXX=g++-4.9 \
+ && cmake .. \
+ # Do NOT remove this second `cmake ..`!
+ # For whatever reason, this is needed to "recognize" the run/ dir.
+ && cmake .. \
+ && make \
+ && make
+
+RUN cd z3-spacer \
  && mkdir build \
  && python3 scripts/mk_make.py --staticbin --staticlib --build build \
  && cd build \
@@ -58,13 +76,18 @@ COPY --chown=user:user \
 
 COPY --from=builder \
      --chown=user:user \
-     /home/user/z3/build/z3 \
+     /home/user/z3-spacer/build/z3 \
      /home/user/solver/engines/z3-spacer/z3
 
 COPY --from=builder \
      --chown=user:user \
      /home/user/freqhorn/build/tools/deep/freqhorn \
      /home/user/solver/engines/freqhorn/freqhorn
+
+COPY --from=builder \
+     --chown=user:user \
+     /home/user/freqn/build/tools/nonlin/freqn \
+     /home/user/solver/engines/freqn/freqn
 
 COPY --from=builder \
      --chown=user:user \
@@ -91,11 +114,11 @@ RUN rm -rf engines/__pycache_ engines/*/__pycache_ \
 
 
 COPY --chown=user:user \
-     tools/work-in-progress/chc-comp/to-sygus.py \
+     SyGuS-Org_tools/work-in-progress/chc-comp/to-sygus.py \
      /home/user/solver/translators/smt-to-sygus.py
 
 COPY --chown=user:user \
-     tools/work-in-progress/chc-comp/from-sygus.py \
+     SyGuS-Org_tools/work-in-progress/chc-comp/from-sygus.py \
      /home/user/solver/translators/sygus-to-smt.py
 
 COPY --chown=user:user \
