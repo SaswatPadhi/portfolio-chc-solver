@@ -4,6 +4,7 @@ from tempfile import mkstemp as make_tempfile
 
 
 ENGINE = 'z3-spacer'
+FORMAT = 'smt'
 
 
 logger = None
@@ -22,10 +23,10 @@ def preprocess(args):
     from mmap import ACCESS_READ, mmap
     from shutil import copyfile
 
-    if args.format != 'smt':
-        _, tfile_path = make_tempfile(suffix=f'.z3-spacer.smt')
+    if args.format != FORMAT:
+        _, tfile_path = make_tempfile(suffix=f'.z3-spacer.{FORMAT}')
         
-        translator = args.translators_path.joinpath(f'{args.format}-to-smt.py')
+        translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
             logger.error(f'Could not locate translator "{translator}"!')
             raise FileNotFoundError(translator)

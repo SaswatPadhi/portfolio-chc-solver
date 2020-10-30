@@ -4,6 +4,7 @@ from tempfile import mkstemp as make_tempfile
 
 
 ENGINE = 'lig-chc'
+FORMAT = 'sygus'
 
 
 logger = None
@@ -19,10 +20,10 @@ def setup(args):
 def preprocess(args):
     global logger
 
-    if args.format != 'sygus':
-        _, tfile_path = make_tempfile(suffix=f'.lig-chc.sygus')
+    if args.format != FORMAT:
+        _, tfile_path = make_tempfile(suffix=f'.lig-chc.{FORMAT}')
         
-        translator = args.translators_path.joinpath(f'{args.format}-to-sygus.py')
+        translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
             logger.error(f'Could not locate translator "{translator}"!')
             raise FileNotFoundError(translator)

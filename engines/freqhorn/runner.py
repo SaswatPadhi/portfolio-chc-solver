@@ -4,6 +4,7 @@ from tempfile import mkstemp as make_tempfile
 
 
 ENGINE = 'freqhorn'
+FORMAT = 'smt'
 
 
 logger = None
@@ -19,10 +20,10 @@ def setup(args):
 def preprocess(args):
     global logger
 
-    if args.format != 'smt':
-        _, tfile_path = make_tempfile(suffix=f'.freqhorn.smt')
+    if args.format != FORMAT:
+        _, tfile_path = make_tempfile(suffix=f'.freqhorn.{FORMAT}')
         
-        translator = args.translators_path.joinpath(f'{args.format}-to-sygus.py')
+        translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
             logger.error(f'Could not locate translator "{translator}"!')
             raise FileNotFoundError(translator)
@@ -53,7 +54,7 @@ def solve(args):
         output = result.stdout.decode('utf-8').strip()
         if 'Unsupported' in output or 'unsupported' in output:
             raise AssertionError()
-        return output
+        return '\n'.join(output.splitlines()[1:])
     except Exception as _:
         error = result.stderr.decode('utf-8').strip()
         if error:

@@ -4,6 +4,7 @@ from tempfile import mkstemp as make_tempfile
 
 
 ENGINE = 'freqn'
+FORMAT = 'smt'
 
 
 logger = None
@@ -19,10 +20,10 @@ def setup(args):
 def preprocess(args):
     global logger
 
-    if args.format != 'smt':
-        _, tfile_path = make_tempfile(suffix=f'.freqn.smt')
+    if args.format != FORMAT:
+        _, tfile_path = make_tempfile(suffix=f'.freqn.{FORMAT}')
         
-        translator = args.translators_path.joinpath(f'{args.format}-to-sygus.py')
+        translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
             logger.error(f'Could not locate translator "{translator}"!')
             raise FileNotFoundError(translator)
