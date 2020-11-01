@@ -11,6 +11,8 @@ COPY --chown=user:user patches   /home/user/patches
 ARG MAKEFLAGS="-j8"
 
 RUN cd freqhorn \
+ && ( [ ! -f "../patches/freqhorn.patch" ] || \
+      patch -p0 < ../patches/freqhorn.patch) \
  && mkdir build \
  && cd build \
  && export PYTHON=python3 \
@@ -21,7 +23,8 @@ RUN cd freqhorn \
  && make
 
 RUN cd freqn \
- && patch -p0 < ../patches/freqn.patch \
+ && ( [ ! -f "../patches/freqn.patch" ] || \
+      patch -p0 < ../patches/freqn.patch) \
  && mkdir build \
  && cd build \
  && cp -r ../../freqhorn/build/run . \
@@ -36,12 +39,16 @@ RUN cd freqn \
  && make
 
 RUN cd z3-spacer \
+ && ( [ ! -f "../patches/z3-spacer.patch" ] || \
+      patch -p0 < ../patches/z3-spacer.patch) \
  && mkdir build \
  && python3 scripts/mk_make.py --staticbin --staticlib --build build \
  && cd build \
  && make
 
 RUN cd lig-chc \
+ && ( [ ! -f "../patches/lig-chc.patch" ] || \
+      patch -p0 < ../patches/lig-chc.patch) \
  && eval "$(opam env)" \
  && opam exec -- dune build @NoLog \
  && opam exec -- dune build
