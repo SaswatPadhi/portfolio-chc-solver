@@ -63,7 +63,7 @@ def main(args):
     logger.debug(f'Started portfolio solver with format = "{args.format}", log level = "{args.log_level}".')
 
     _, tfile_path = make_tempfile(suffix=f'.{args.format}')
-    logger.info(f'Cloning input to file: {tfile_path}.')
+    logger.info(f'Cloning input from "{args.input_file.name}" to file: {tfile_path}.')
     with open(tfile_path, 'w') as tfile_handle:
         tfile_handle.writelines(args.input_file.readlines())
     args.input_file = Path(tfile_path).resolve()
@@ -76,8 +76,17 @@ def main(args):
             else:
                 logger.warning(f'Cannot disable unknown engine: "{engine}".')
         engines = [engine for engine in engines if engine not in args.disable_engine]
+    elif args.enable_engine:
+        engines = []
+        for engine in args.enable_engine:
+            if engine in args.engines:
+                logger.info(f'Enabled "{engine}" engine.')
+            else:
+                logger.warning(f'Cannot enable unknown engine: "{engine}".')
+            if not engine in engines:
+                engines.append(engine)
 
-    logger.info(f'Enabled engines: {engines}.')
+    logger.info(f'Active engines: {engines}.')
     if cpu_count() <= len(engines):
         logger.warning(f'Starting {len(engines)} engine(s); have {cpu_count()} CPU(s).')
     elif len(engines) > 0:
@@ -152,9 +161,6 @@ if __name__ == '__main__':
     logger.info(f'Detected translators: {translators}.')
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d', '--disable-engine',
-                        action='append', choices=engines,
-                        help='Disable a CHC solver engine')
     parser.add_argument('-f', '--format',
                         type=str.lower, default='smt', choices=['smt','sygus'],
                         help='The input file format (default: %(default)s)')
@@ -162,6 +168,15 @@ if __name__ == '__main__':
                         type=str.upper, default='CRITICAL',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         help='Set the logging level (default: %(default)s)')
+
+    enable_disable_group = parser.add_mutually_exclusive_group()
+    enable_disable_group.add_argument('-e', '--enable-engine',
+                                      action='append', choices=engines,
+                                      help='Enable a CHC solver engine')
+    enable_disable_group.add_argument('-d', '--disable-engine',
+                                      action='append', choices=engines,
+                                      help='Disable a CHC solver engine')
+
     parser.add_argument('input_file',
                         type=FileType('r'),
                         help='Path to an input file (or <stdin> if "-")')
