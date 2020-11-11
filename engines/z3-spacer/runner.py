@@ -24,7 +24,7 @@ def preprocess(args):
     from shutil import copyfile
 
     if args.format != FORMAT:
-        _, tfile_path = make_tempfile(suffix=f'.z3-spacer.{FORMAT}')
+        _, tfile_path = make_tempfile(suffix=f'.z3-spacer.from-{args.format}.{FORMAT}')
         
         translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
@@ -40,19 +40,19 @@ def preprocess(args):
         with open(tfile_path, 'w') as tfile_handle:
             tfile_handle.writelines(result.stdout.decode('utf-8'))
         args.input_file = tfile_path
-    else:
-        with open(args.input_file, 'rb', 0) as file:
-            with mmap(file.fileno(), 0, access=ACCESS_READ) as s:
-                if s.find(b'(get-model)') != -1:
-                    return args
 
-        _, tfile_path = make_tempfile(suffix=f'.z3-spacer.smt')
-        copyfile(args.input_file, tfile_path)
+    with open(args.input_file, 'rb', 0) as file:
+        with mmap(file.fileno(), 0, access=ACCESS_READ) as s:
+            if s.find(b'(get-model)') != -1:
+                return args
 
-        with open(tfile_path, 'a') as tfile_handle:
-            tfile_handle.write('\n(get-model)\n')
-        args.input_file = tfile_path
-        
+    _, tfile_path = make_tempfile(suffix=f'.z3-spacer.smt')
+    copyfile(args.input_file, tfile_path)
+
+    with open(tfile_path, 'a') as tfile_handle:
+        tfile_handle.write('\n(get-model)\n')
+    args.input_file = tfile_path
+
     return args
 
 

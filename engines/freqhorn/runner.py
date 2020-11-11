@@ -21,7 +21,7 @@ def preprocess(args):
     global logger
 
     if args.format != FORMAT:
-        _, tfile_path = make_tempfile(suffix=f'.freqhorn.{FORMAT}')
+        _, tfile_path = make_tempfile(suffix=f'.freqhorn.from-{args.format}.{FORMAT}')
         
         translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
@@ -37,6 +37,14 @@ def preprocess(args):
         with open(tfile_path, 'w') as tfile_handle:
             tfile_handle.writelines(result.stdout.decode('utf-8'))
         args.input_file = tfile_path
+
+    _, tfile_path = make_tempfile(suffix=f'.freqhorn.smt')
+
+    with open(tfile_path, 'w') as tfile_handle:
+        with open(args.input_file, 'r') as input_handle:
+            tfile_handle.writelines(line for line in input_handle.readlines()
+                                         if line.strip() != "(get-model)")
+    args.input_file = tfile_path
 
     return args
 

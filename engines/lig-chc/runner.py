@@ -21,7 +21,7 @@ def preprocess(args):
     global logger
 
     if args.format != FORMAT:
-        _, tfile_path = make_tempfile(suffix=f'.lig-chc.{FORMAT}')
+        _, tfile_path = make_tempfile(suffix=f'.lig-chc.from-{args.format}.{FORMAT}')
         
         translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
