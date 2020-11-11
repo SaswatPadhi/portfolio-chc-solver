@@ -68,8 +68,8 @@ def main(args):
         tfile_handle.writelines(args.input_file.readlines())
     args.input_file = Path(tfile_path).resolve()
     
-    engines = args.engines
     if args.disable_engine:
+        engines = args.engines
         for engine in args.disable_engine:
             if engine in args.engines:
                 logger.info(f'Disabled "{engine}" engine.')
