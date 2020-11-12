@@ -1,4 +1,4 @@
-FROM portfolio:builder AS builder
+FROM padhi/portfolio-chc-solver:builder AS builder
 
 
 COPY --chown=user:user freqhorn  /home/user/freqhorn
