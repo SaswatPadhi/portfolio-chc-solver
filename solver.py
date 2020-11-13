@@ -6,6 +6,7 @@ from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count, Process, Queue
 from pathlib import Path
+from subprocess import PIPE, run
 from sys import exit
 from tempfile import mkstemp as make_tempfile
 
@@ -13,7 +14,7 @@ from tempfile import mkstemp as make_tempfile
 SELF_PATH = Path(__file__).resolve().parent
 
 
-def run(engine, args, queue):
+def run_engine_process(engine, args, queue):
     logger = args.logging.getLogger(f'e:{engine}')
     logger.setLevel(args.logging.getLevelName(args.log_level))
 
@@ -30,14 +31,35 @@ def run(engine, args, queue):
         return
 
     engine_runner = import_module(f'engines.{engine}.runner')
-    engine_runner.setup(args)
+    try:
+        engine_runner.setup(args)
+    except Exception as e:
+        logger.error(f'Engine "{engine}" could not be setup!')
+        logger.exception(e)
+        queue.put((engine, 'FAIL'))
+        return
 
     if hasattr(engine_runner, 'preprocess'):
         try:
             logger.debug(f'Preprocessing "{args.input_file}" for "{engine}" engine ...')
             args = engine_runner.preprocess(args)
+            for processor in args.process.get(engine, []):
+                processor_path = args.processors_path.joinpath(engine_runner.FORMAT).joinpath(processor).joinpath('pre.py')
+                if not processor_path.is_file():
+                    raise FileNotFoundError(processor_path)
+
+                _, tfile_path = make_tempfile(suffix=f'.{engine}.{processor}.pre.{engine_runner.FORMAT}')
+                logger.debug(f'Additional processor: python3 {processor_path} {args.input_file}')
+                result = run(['python3', processor_path, args.input_file], stdout=PIPE, stderr=PIPE)
+                result.check_returncode()
+
+                with open(tfile_path, 'w') as tfile_handle:
+                    tfile_handle.writelines(result.stdout.decode('utf-8'))
+                args.input_file = tfile_path
+
+            logger.info(f'Input preprocessing is complete.')
         except Exception as e:
-            logger.error(f'Exception encountered during preprocessing:')
+            logger.error(f'Exception encountered during input preprocessing:')
             logger.exception(e)
             queue.put((engine, 'FAIL'))
             return
@@ -49,7 +71,7 @@ def run(engine, args, queue):
             queue.put((engine, 'FAIL'))
         else:
             queue.put((engine, result))
-            logger.info(f'A solution was found:\n{result}')
+            logger.debug(f'A solution was found:\n{result}')
     except Exception as e:
         logger.error(f'Exception encountered during solving:')
         logger.exception(e)
@@ -63,16 +85,16 @@ def main(args):
     logger.debug(f'Started portfolio solver with format = "{args.format}", log level = "{args.log_level}".')
 
     _, tfile_path = make_tempfile(suffix=f'.{args.format}')
-    logger.info(f'Cloning input from "{args.input_file.name}" to file: {tfile_path}.')
+    logger.debug(f'Cloning input from "{args.input_file.name}" to file: {tfile_path}.')
     with open(tfile_path, 'w') as tfile_handle:
         tfile_handle.writelines(args.input_file.readlines())
     args.input_file = Path(tfile_path).resolve()
     
+    engines = args.engines
     if args.disable_engine:
-        engines = args.engines
         for engine in args.disable_engine:
             if engine in args.engines:
-                logger.info(f'Disabled "{engine}" engine.')
+                logger.debug(f'Disabled "{engine}" engine.')
             else:
                 logger.warning(f'Cannot disable unknown engine: "{engine}".')
         engines = [engine for engine in engines if engine not in args.disable_engine]
@@ -80,13 +102,30 @@ def main(args):
         engines = []
         for engine in args.enable_engine:
             if engine in args.engines:
-                logger.info(f'Enabled "{engine}" engine.')
+                logger.debug(f'Enabled "{engine}" engine.')
             else:
                 logger.warning(f'Cannot enable unknown engine: "{engine}".')
             if not engine in engines:
                 engines.append(engine)
 
-    logger.info(f'Active engines: {engines}.')
+    processors = dict()
+    if args.process:
+        for p in args.process:
+            split_p = p.split(':')
+            if len(split_p) != 2:
+                logger.warning(f'Ignoring invalid process flag: {p}!')
+                continue
+            if split_p[0] not in engines:
+                logger.warning(f'Ignoring process flag "{p}" for disabled engine "{split_p[0]}"')
+            if split_p[0] not in processors:
+                processors[split_p[0]] = []
+            if split_p[1] not in processors[split_p[0]]:
+                processors[split_p[0]].append(split_p[1])
+                logger.debug(f'Registered processor "{split_p[1]}" for "{split_p[0]}" engine.')
+    args.process = processors
+
+    logger.debug(f'Active engines: {", ".join([f"{e}{processors.get(e,[])}" for e in engines])}.')
+
     if cpu_count() <= len(engines):
         logger.warning(f'Starting {len(engines)} engine(s); have {cpu_count()} CPU(s).')
     elif len(engines) > 0:
@@ -99,7 +138,7 @@ def main(args):
     workers = []
     for engine in engines:
         args_copy = copy(args)
-        worker = Process(target=run, args=(engine, args_copy, queue))
+        worker = Process(target=run_engine_process, args=(engine, args_copy, queue))
         workers.append(worker)
         worker.start()
 
@@ -141,7 +180,7 @@ if __name__ == '__main__':
         level=logging.CRITICAL)
     logger = logging.getLogger('boot')
 
-    logger.info(f'Booting portfolio solver at "{SELF_PATH}".')
+    logger.debug(f'Booting portfolio solver at "{SELF_PATH}".')
     
     engines_path = SELF_PATH.joinpath('engines')
     if not engines_path.is_dir():
@@ -150,22 +189,34 @@ if __name__ == '__main__':
 
     engines = [e.name for e in engines_path.glob('*')
                if e.is_dir() and e.name != '__pycache__' ]
-    logger.info(f'Detected engines: {engines}.')
+    logger.debug(f'Detected engines: {engines}.')
+    
+    processors_path = SELF_PATH.joinpath('processors')
+    if not processors_path.is_dir():
+        logger.critical(f'Processors directory "{processors_path}" does not exist!')
+        exit(1)
+
+    processors = [f'{p.name} ({p.parent.name})'
+                  for p in processors_path.glob('*/*')
+                  if p.is_dir() and p.name != '__pycache__' ]
+    logger.debug(f'Detected processors: {processors}.')
     
     translators_path = SELF_PATH.joinpath('translators')
     if not translators_path.is_dir():
         logger.warning(f'Translators directory "{translators_path}" does not exist!')
 
-    translators = [t.name[:-3] for t in translators_path.glob('*')
-                   if t.is_file() and t.name != '__init__.py' and t.name.endswith('.py') ]
-    logger.info(f'Detected translators: {translators}.')
+    translators = [t.name[:-3] for t in translators_path.glob('*.py')
+                   if t.is_file() and t.name != '__init__.py' ]
+    logger.debug(f'Detected translators: {translators}.')
     
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsHelpFormatter,
+        epilog=f'Available processors: {", ".join(processors)}')
     parser.add_argument('-f', '--format',
                         type=str.lower, default='smt', choices=['smt','sygus'],
                         help='The input file format (default: %(default)s)')
     parser.add_argument('-l', '--log-level',
-                        type=str.upper, default='CRITICAL',
+                        type=str.upper, default='INFO',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         help='Set the logging level (default: %(default)s)')
 
@@ -177,6 +228,10 @@ if __name__ == '__main__':
                                       action='append', choices=engines,
                                       help='Disable a CHC solver engine')
 
+    parser.add_argument('-p', '--process',
+                        action='append',
+                        help='Tool-specific input processing: <tool>:<processor>')
+
     parser.add_argument('input_file',
                         type=FileType('r'),
                         help='Path to an input file (or <stdin> if "-")')
@@ -187,6 +242,9 @@ if __name__ == '__main__':
 
     args.engines_path = engines_path
     args.engines = engines
+
+    args.processors_path = processors_path
+    args.processors = processors
 
     args.translators_path = translators_path
     args.translators = translators

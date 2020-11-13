@@ -1,4 +1,4 @@
-FROM portfolio:builder AS builder
+FROM padhi/portfolio-chc-solver:builder AS builder
 
 
 COPY --chown=user:user freqhorn  /home/user/freqhorn
@@ -80,6 +80,10 @@ RUN apt-get update \
 COPY --chown=user:user \
      engines \
      /home/user/solver/engines
+
+COPY --chown=user:user \
+     processors \
+     /home/user/solver/processors
 
 COPY --from=builder \
      --chown=user:user \
