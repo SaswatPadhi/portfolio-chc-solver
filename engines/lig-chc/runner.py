@@ -28,9 +28,7 @@ def preprocess(args):
             logger.error(f'Could not locate translator "{translator}"!')
             raise FileNotFoundError(translator)
 
-        logger.info(f'Translating input from {args.format} -> {tfile_path} ...')
-        logger.debug(f'Exec: python3 {translator} {args.input_file}')
-
+        logger.debug(f'Translating from {args.format} -> {tfile_path}: python3 {translator} {args.input_file}')
         result = run(['python3', translator, args.input_file], stdout=PIPE, stderr=PIPE)
         result.check_returncode()
 

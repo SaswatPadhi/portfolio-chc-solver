@@ -81,6 +81,10 @@ COPY --chown=user:user \
      engines \
      /home/user/solver/engines
 
+COPY --chown=user:user \
+     processors \
+     /home/user/solver/processors
+
 COPY --from=builder \
      --chown=user:user \
      /home/user/z3-spacer/build/z3 \
