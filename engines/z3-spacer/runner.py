@@ -11,7 +11,7 @@ FORMAT = 'smt'
 
 logger = None
 parser = None
-tracked_symbols = []
+tracked_symbols = dict()
 
 pp.ParserElement.enablePackrat()
 
@@ -73,11 +73,11 @@ def preprocess(args):
             tfile_handle.write('\n(get-model)\n')
         args.input_file = tfile_path
 
-    tracked_symbols = [
-        quote_name(stmt[1])
+    tracked_symbols = {
+        quote_name(stmt[1]) : stmt[2]
         for stmt in parser.parseFile(args.input_file, parseAll=True).asList()
         if stmt[0] == 'declare-fun'
-    ]
+    }
     logger.debug(tracked_symbols)
 
     return args
@@ -87,6 +87,10 @@ def serialize(statement):
         return statement
     return f'({" ".join(serialize(e) for e in statement)})'
 
+def substitute(expr, replacements):
+    if type(expr) is not list:
+        return
+
 def shrink(output):
     global logger, parser, tracked_symbols
 
@@ -94,7 +98,10 @@ def shrink(output):
     for stmt in parser.parseString(output, parseAll=True).asList()[0][1:]:
         if stmt[0] == 'define-fun':
             stmt[1] = quote_name(stmt[1])
-            if stmt[1] in tracked_symbols:
+            args = tracked_symbols.get(stmt[1], None)
+            if args is not None:
+                assert len(stmt[2]) == len(tracked_symbols[stmt[1]])
+                substitute(stmt, zip(stmt[2], tracked_symbols[stmt[1]]))
                 result.append(stmt)
 
     return '\n'.join(serialize(stmt) for stmt in result)

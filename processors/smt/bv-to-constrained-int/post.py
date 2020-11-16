@@ -9,34 +9,10 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, FileType
 pp.ParserElement.enablePackrat()
 
 
-bv_func_mapping = {
-    'bvslt': '<',
-    'bvsle': '>=',
-    'bvsgt': '>',
-    'bvsge': '>=',
-
-    'bvult': '<',
-    'bvule': '<=',
-    'bvugt': '>',
-    'bvuge': '>=',
-
-    'bvadd': '+',
-    'bvmul': '*',
-    'bvneg': 'bv_neg',
-    'bvsub': '-',
-
-    'bvshl': '__NOT_IMPLEMENTED__',
-    'bvashr': '__NOT_IMPLEMENTED__',
-    'bvlshr': '__NOT_IMPLEMENTED__',
-
-    'bvand': '__NOT_IMPLEMENTED__',
-    'bvor': '__NOT_IMPLEMENTED__',
-}
-
-def convert_and_serialize(statement):
+def serialize(statement):
     if type(statement) is not list:
         return statement
-    return f'({" ".join(convert_and_serialize(e) for e in statement)})'
+    return f'({" ".join(serialize(e) for e in statement)})'
 
 def main(args):
     i_expr = pp.QuotedString(quoteChar='"') | pp.QuotedString(quoteChar='|', unquoteResults=False)
@@ -46,7 +22,7 @@ def main(args):
     parser = pp.ZeroOrMore(s_expr)
     ast = parser.parseFile(args.input_file, parseAll=True).asList()
 
-    sys.stdout.writelines(convert_and_serialize(statement) + '\n' for statement in ast)
+    sys.stdout.writelines(serialize(statement) + '\n' for statement in ast)
 
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

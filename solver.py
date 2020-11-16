@@ -173,7 +173,7 @@ if __name__ == '__main__':
         else:
             raise NotADirectoryError(string)
 
-    from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, FileType
+    from argparse import RawDescriptionHelpFormatter, ArgumentParser, FileType
 
     logging.basicConfig(
         format='%(asctime)s [%(levelname)8s] %(name)12s - %(message)s',
@@ -210,8 +210,8 @@ if __name__ == '__main__':
     logger.debug(f'Detected translators: {translators}.')
     
     parser = ArgumentParser(
-        formatter_class=ArgumentDefaultsHelpFormatter,
-        epilog=f'Available processors: {", ".join(processors)}')
+        formatter_class=RawDescriptionHelpFormatter,
+        epilog=f'Available processors: {", ".join(processors)}\nAvailable translators: {", ".join(translators)}')
     parser.add_argument('-f', '--format',
                         type=str.lower, default='smt', choices=['smt','sygus'],
                         help='The input file format (default: %(default)s)')
