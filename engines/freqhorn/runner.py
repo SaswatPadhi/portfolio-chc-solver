@@ -22,7 +22,7 @@ def preprocess(args):
     from mmap import ACCESS_READ, mmap
 
     if args.format != FORMAT:
-        _, tfile_path = make_tempfile(suffix=f'.freqhorn.from-{args.format}.{FORMAT}')
+        _, tfile_path = make_tempfile(dir=args.temp_path, suffix=f'.freqhorn.from-{args.format}.{FORMAT}')
         
         translator = args.translators_path.joinpath(f'{args.format}-to-{FORMAT}.py')
         if not translator.is_file():
@@ -44,7 +44,7 @@ def preprocess(args):
                 get_model_removal_needed = True
 
     if get_model_removal_needed:
-        _, tfile_path = make_tempfile(suffix=f'.freqhorn.smt')
+        _, tfile_path = make_tempfile(dir=args.temp_path, suffix=f'.freqhorn.smt')
 
         with open(tfile_path, 'w') as tfile_handle:
             with open(args.input_file, 'r') as input_handle:

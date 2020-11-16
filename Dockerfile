@@ -114,7 +114,8 @@ USER user
 WORKDIR /home/user/solver
 
 
-RUN rm -rf engines/__pycache_ engines/*/__pycache_ \
+RUN mkdir tmp \
+ && rm -rf engines/__pycache_ engines/*/__pycache_ \
  && mkdir -p engines/lig-chc/_dep \
  && cd engines/lig-chc \
  && ln -s ../../z3-spacer/z3 _dep/z3 \

@@ -12,6 +12,7 @@ from tempfile import mkstemp as make_tempfile
 
 
 SELF_PATH = Path(__file__).resolve().parent
+TEMP_PATH = SELF_PATH.joinpath('tmp')
 
 
 def run_engine_process(engine, args, queue):
@@ -48,7 +49,7 @@ def run_engine_process(engine, args, queue):
                 if not processor_path.is_file():
                     raise FileNotFoundError(processor_path)
 
-                _, tfile_path = make_tempfile(suffix=f'.{engine}.{processor}.pre.{engine_runner.FORMAT}')
+                _, tfile_path = make_tempfile(dir=TEMP_PATH, suffix=f'.{engine}.{processor}.pre.{engine_runner.FORMAT}')
                 logger.debug(f'Additional processor: python3 {processor_path} {args.input_file}')
                 result = run(['python3', processor_path, args.input_file], stdout=PIPE, stderr=PIPE)
                 result.check_returncode()
@@ -84,7 +85,7 @@ def main(args):
 
     logger.debug(f'Started portfolio solver with format = "{args.format}", log level = "{args.log_level}".')
 
-    _, tfile_path = make_tempfile(suffix=f'.{args.format}')
+    _, tfile_path = make_tempfile(dir=TEMP_PATH, suffix=f'.{args.format}')
     logger.debug(f'Cloning input from "{args.input_file.name}" to file: {tfile_path}.')
     with open(tfile_path, 'w') as tfile_handle:
         tfile_handle.writelines(args.input_file.readlines())
@@ -239,6 +240,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     args.logging = logging
+    args.temp_path = TEMP_PATH
 
     args.engines_path = engines_path
     args.engines = engines

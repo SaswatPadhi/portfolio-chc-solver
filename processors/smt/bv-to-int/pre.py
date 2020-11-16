@@ -35,7 +35,19 @@ bv_func_mapping = {
 
 def convert_and_serialize(statement):
     if type(statement) is not list:
+        replacement = bv_func_mapping.get(statement, None)
+        if replacement is not None:
+            if replacement == '__NOT_IMPLEMENTED__':
+                raise NotImplementedError(statement)
+            return replacement
         return statement
+
+    if statement[0] == '_' and statement[1] == 'BitVec':
+        return 'Int'
+
+    if statement[0] == '_' and statement[1].startswith('bv'):
+        return statement[1][2:]
+
     return f'({" ".join(convert_and_serialize(e) for e in statement)})'
 
 def main(args):

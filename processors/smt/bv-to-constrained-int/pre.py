@@ -114,6 +114,7 @@ def generate_bv_functions(width):
        (bound_int_{width}
          (- 0 x))))
 
+; there should be a better way to do this ...
 (define-fun bv_mul_{width} ((x Int) (y Int)) Int
   (let ((x (bound_int_{width} x))
         (y (bound_int_{width} y)))
