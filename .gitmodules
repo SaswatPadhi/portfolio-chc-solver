@@ -1,11 +1,6 @@
 [submodule "freqhorn"]
 	path = freqhorn
-	url = https://github.com/grigoryfedyukovich/aeval
-	branch = rnd
-[submodule "freqn"]
-	path = freqn
-	url = https://github.com/grigoryfedyukovich/aeval
-	branch = modver
+	url = https://github.com/freqhorn/freqhorn
 [submodule "lig-chc"]
 	path = lig-chc
 	url = https://github.com/SaswatPadhi/LIG-CHC
