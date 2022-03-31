@@ -39,14 +39,14 @@ def convert_and_serialize(statement):
         if replacement is not None:
             if replacement == '__NOT_IMPLEMENTED__':
                 raise NotImplementedError(statement)
-            return replacement
-        return statement
+            return '""' if not replacement else replacement
+        return '""' if not statement else statement
 
-    if statement[0] == '_' and statement[1] == 'BitVec':
-        return 'Int'
-
-    if statement[0] == '_' and statement[1].startswith('bv'):
-        return statement[1][2:]
+    if len(statement) >= 2:
+        if statement[0] == '_' and statement[1] == 'BitVec':
+            return 'Int'
+        elif statement[0] == '_' and statement[1].startswith('bv'):
+            return statement[1][2:]
 
     return f'({" ".join(convert_and_serialize(e) for e in statement)})'
 

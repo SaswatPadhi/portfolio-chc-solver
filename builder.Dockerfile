@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:11.3-slim
 
 
 ARG OPAM_VERSION=2.0.7
@@ -6,13 +6,12 @@ ARG OCAML_VERSION=4.11.1+flambda
 
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN echo "deb http://deb.debian.org/debian/ jessie main contrib non-free" >> /etc/apt/sources.list \
- && apt-get update \
+RUN apt-get update \
  && apt-get upgrade -yq \
  && apt-get install -yq \
             build-essential \
             cmake curl \
-            g++-4.9 git \
+            g++ git \
             libboost-dev libboost-system-dev libgmp-dev libgomp1 libomp5 libomp-dev \
             m4 \
             python3 python3-setuptools \

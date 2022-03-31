@@ -1,12 +1,7 @@
-FROM padhi/portfolio-chc-solver:builder AS builder
-
+FROM padhi/portfolio-chc-solver:builder AS builder-freqhorn
 
 COPY --chown=user:user freqhorn  /home/user/freqhorn
-COPY --chown=user:user freqn     /home/user/freqn
-COPY --chown=user:user lig-chc   /home/user/lig-chc
-COPY --chown=user:user z3-spacer /home/user/z3-spacer
 COPY --chown=user:user patches   /home/user/patches
-
 
 ARG MAKEFLAGS="-j8"
 
@@ -16,27 +11,19 @@ RUN cd freqhorn \
  && mkdir build \
  && cd build \
  && export PYTHON=python3 \
- && export CC=gcc-4.9 \
- && export CXX=g++-4.9 \
+ && export CC=gcc \
+ && export CXX=g++ \
  && cmake .. \
  && make \
  && make
 
-RUN cd freqn \
- && ( [ ! -f "../patches/freqn.patch" ] || \
-      patch -p0 < ../patches/freqn.patch) \
- && mkdir build \
- && cd build \
- && cp -r ../../freqhorn/build/run . \
- && export PYTHON=python3 \
- && export CC=gcc-4.9 \
- && export CXX=g++-4.9 \
- && cmake .. \
- # Do NOT remove this second `cmake ..`!
- # For whatever reason, this is needed to "recognize" the run/ dir.
- && cmake .. \
- && make \
- && make
+
+FROM padhi/portfolio-chc-solver:builder AS builder-z3-spacer
+
+COPY --chown=user:user z3-spacer /home/user/z3-spacer
+COPY --chown=user:user patches   /home/user/patches
+
+ARG MAKEFLAGS="-j8"
 
 RUN cd z3-spacer \
  && ( [ ! -f "../patches/z3-spacer.patch" ] || \
@@ -45,6 +32,14 @@ RUN cd z3-spacer \
  && python3 scripts/mk_make.py --staticbin --staticlib --build build \
  && cd build \
  && make
+
+
+FROM padhi/portfolio-chc-solver:builder AS builder-lig-chc
+
+COPY --chown=user:user lig-chc   /home/user/lig-chc
+COPY --chown=user:user patches   /home/user/patches
+
+ARG MAKEFLAGS="-j8"
 
 RUN cd lig-chc \
  && ( [ ! -f "../patches/lig-chc.patch" ] || \
@@ -56,7 +51,7 @@ RUN cd lig-chc \
 
 
 
-FROM debian:buster-slim
+FROM debian:11.3-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -85,26 +80,21 @@ COPY --chown=user:user \
      processors \
      /home/user/solver/processors
 
-COPY --from=builder \
+COPY --from=builder-z3-spacer \
      --chown=user:user \
      /home/user/z3-spacer/build/z3 \
      /home/user/solver/engines/z3-spacer/z3
 
-COPY --from=builder \
+COPY --from=builder-freqhorn \
      --chown=user:user \
      /home/user/freqhorn/build/tools/deep/freqhorn \
      /home/user/solver/engines/freqhorn/freqhorn
 
-COPY --from=builder \
-     --chown=user:user \
-     /home/user/freqn/build/tools/nonlin/freqn \
-     /home/user/solver/engines/freqn/freqn
-
-COPY --from=builder \
+COPY --from=builder-lig-chc \
      --chown=user:user \
      /home/user/lig-chc/_build \
      /home/user/solver/engines/lig-chc_build
-COPY --from=builder \
+COPY --from=builder-lig-chc \
      --chown=user:user \
      /home/user/lig-chc/loopinvgen.sh \
      /home/user/solver/engines/lig-chc.sh
